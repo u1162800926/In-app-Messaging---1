@@ -56,6 +56,8 @@ export const ALL_USERS: Record<string, User> = {
   'user-5': { id: 'user-5', displayName: 'Tom Wright', role: 'athlete', avatar: 'TW', isPremium: false },
 };
 
+// ScoutStar grants: key = "scoutId:athleteId", value = number of stars sent
+// A scout must send ≥ 3 ScoutStars to an athlete before the scout can initiate messaging
 export const STARS_GRANTS: Record<string, number> = {
   'user-1:me': 5,
   'user-3:me': 3,

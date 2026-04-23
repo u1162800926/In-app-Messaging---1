@@ -14,7 +14,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { CURRENT_USER, type Message } from '@/data/mock';
-import { useChatStore, type SendResult } from '@/context/chat-store';
+import { useChatStore, getScoutStarsForPeer, type SendResult } from '@/context/chat-store';
 
 function statusIcon(status: Message['status']) {
   switch (status) {
@@ -109,6 +109,26 @@ function MessageBubble({
   );
 }
 
+// FR-IM-05: ScoutStar info banner — only shown for scout peers who passed the threshold
+function ScoutStarBanner({ peerId, peerName }: { peerId: string; peerName: string }) {
+  const stars = getScoutStarsForPeer(peerId);
+  if (stars === null || stars < 3) return null;
+
+  return (
+    <View style={styles.starBanner}>
+      <ThemedText style={styles.starBannerIcon}>{'\u2B50'}</ThemedText>
+      <View style={styles.starBannerContent}>
+        <ThemedText style={styles.starBannerTitle}>
+          ScoutStar: {stars} sent
+        </ThemedText>
+        <ThemedText style={styles.starBannerSub}>
+          {peerName} sent {stars} ScoutStars to unlock this conversation.
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -136,9 +156,10 @@ export default function ChatScreen() {
   const blocked = isUserBlocked(peerId);
   const isTyping = typingPeers[id] ?? false;
 
+  // Mark as read on enter and whenever messages change while in this screen
   useEffect(() => {
     markAsRead(id);
-  }, [id, markAsRead]);
+  }, [id, markAsRead, messages.length]);
 
   // Auto-scroll when new messages arrive or typing starts
   useEffect(() => {
@@ -264,6 +285,9 @@ export default function ChatScreen() {
         </Pressable>
       </View>
 
+      {/* FR-IM-05: ScoutStar banner */}
+      <ScoutStarBanner peerId={peerId} peerName={peerName} />
+
       {/* Blocked banner */}
       {blocked && (
         <View style={styles.blockedBanner}>
@@ -379,6 +403,32 @@ const styles = StyleSheet.create({
   },
   headerActionUnblock: {
     color: '#0a7ea4',
+  },
+
+  // ScoutStar banner (FR-IM-05)
+  starBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    gap: 10,
+    backgroundColor: '#FFF8E1',
+  },
+  starBannerIcon: {
+    fontSize: 20,
+  },
+  starBannerContent: {
+    flex: 1,
+  },
+  starBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F57F17',
+  },
+  starBannerSub: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 1,
   },
 
   // Banners

@@ -40,7 +40,7 @@ function moderateContent(text: string): ModerationResult {
   return { decision: 'allow' };
 }
 
-// --- FR-IM-05: Access control ---
+// --- FR-IM-05: Access control + ScoutStar gating ---
 
 export type AccessDecision = { allowed: boolean; reason?: string };
 
@@ -65,7 +65,7 @@ function checkAccess(
     if (stars < 3)
       return {
         allowed: false,
-        reason: `Scouts must give at least 3 STARS before messaging (current: ${stars})`,
+        reason: `Scouts must send at least 3 ScoutStars before messaging (current: ${stars}/3)`,
       };
   }
 
@@ -75,6 +75,16 @@ function checkAccess(
   }
 
   return { allowed: true };
+}
+
+/**
+ * Returns the number of ScoutStars a scout-type peer has sent to the current user.
+ * Returns null if peer is not a scout or relation is not applicable.
+ */
+export function getScoutStarsForPeer(peerId: string): number | null {
+  const peer = ALL_USERS[peerId];
+  if (!peer || peer.role !== 'scout') return null;
+  return STARS_GRANTS[`${peerId}:${CURRENT_USER.id}`] ?? 0;
 }
 
 // --- Store types ---
@@ -187,11 +197,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setReports((prev) => [...prev, report]);
   }, []);
 
-  // FR-IM-03: status progression + FR-IM-08: typing indicator
+  // FR-IM-03: delivery/read status progression + FR-IM-08: typing indicator (animation only)
   const scheduleStatusUpdates = useCallback(
-    (messageId: string, conversationId: string, peerId: string) => {
+    (messageId: string, conversationId: string) => {
       const timers: ReturnType<typeof setTimeout>[] = [];
 
+      // sent → delivered after 1s
       timers.push(
         setTimeout(() => {
           setAllMessages((prev) => ({
@@ -203,6 +214,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }, 1000),
       );
 
+      // delivered → read after 3s
       timers.push(
         setTimeout(() => {
           setAllMessages((prev) => ({
@@ -214,52 +226,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }, 3000),
       );
 
-      // FR-IM-08: simulate peer typing 4s after send, then an auto-reply at 6s
+      // FR-IM-08: show typing indicator briefly (3.5s–5.5s) as visual feedback
       timers.push(
         setTimeout(() => {
           setTypingPeers((prev) => ({ ...prev, [conversationId]: true }));
-        }, 4000),
+        }, 3500),
       );
-
       timers.push(
         setTimeout(() => {
           setTypingPeers((prev) => ({ ...prev, [conversationId]: false }));
-
-          const peerUser = ALL_USERS[peerId];
-          if (!peerUser) return;
-
-          const replies = [
-            'Thanks for the message!',
-            'Got it, I\'ll get back to you soon.',
-            'Sounds good!',
-            'Let me check and let you know.',
-          ];
-          const replyContent = replies[Math.floor(Math.random() * replies.length)];
-          const replyTimestamp = new Date().toISOString();
-          const replyMsg: Message = {
-            id: `m-reply-${Date.now()}`,
-            conversationId,
-            senderId: peerId,
-            content: replyContent,
-            status: 'delivered',
-            createdAt: replyTimestamp,
-          };
-
-          setAllMessages((prev) => ({
-            ...prev,
-            [conversationId]: [...(prev[conversationId] ?? []), replyMsg],
-          }));
-
-          setConversations((prev) =>
-            prev
-              .map((c) =>
-                c.id === conversationId
-                  ? { ...c, lastMessage: replyContent, lastActivityAt: replyTimestamp, unreadCount: c.unreadCount + 1 }
-                  : c,
-              )
-              .sort((a, b) => new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime()),
-          );
-        }, 6000),
+        }, 5500),
       );
 
       timersRef.current[conversationId] = [
@@ -311,7 +287,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       );
 
       // FR-IM-03 + FR-IM-08
-      scheduleStatusUpdates(newMsg.id, conversationId, conversation.peer.id);
+      scheduleStatusUpdates(newMsg.id, conversationId);
 
       return { ok: true, moderation: modResult };
     },

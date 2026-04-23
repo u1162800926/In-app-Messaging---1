@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useChatStore } from '@/context/chat-store';
+import { useChatStore, getScoutStarsForPeer } from '@/context/chat-store';
 import { type Conversation } from '@/data/mock';
 
 function formatTime(dateStr: string) {
@@ -35,6 +35,19 @@ function roleBadgeTextColor(role: string) {
   return map[role] ?? '#333';
 }
 
+function ScoutStarBadge({ peerId }: { peerId: string }) {
+  const stars = getScoutStarsForPeer(peerId);
+  if (stars === null || stars < 3) return null;
+
+  return (
+    <View style={starStyles.badge}>
+      <ThemedText style={starStyles.text}>
+        {'\u2B50'} {stars}
+      </ThemedText>
+    </View>
+  );
+}
+
 function ConversationItem({ item }: { item: Conversation }) {
   const router = useRouter();
 
@@ -57,6 +70,7 @@ function ConversationItem({ item }: { item: Conversation }) {
                 {roleLabel(item.peer.role)}
               </ThemedText>
             </View>
+            <ScoutStarBadge peerId={item.peer.id} />
           </View>
           <ThemedText style={styles.timestamp}>{formatTime(item.lastActivityAt)}</ThemedText>
         </View>
@@ -90,6 +104,23 @@ export default function MessagesScreen() {
     </ThemedView>
   );
 }
+
+const starStyles = StyleSheet.create({
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 4,
+    backgroundColor: '#FFF8E1',
+  },
+  text: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F57F17',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
