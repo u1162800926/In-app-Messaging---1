@@ -5,9 +5,11 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useChatStore } from '@/context/chat-store';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { totalUnread } = useChatStore();
 
   return (
     <Tabs
@@ -21,6 +23,7 @@ export default function TabLayout() {
         options={{
           title: 'Messages',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="message.fill" color={color} />,
+          tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
         }}
       />
       <Tabs.Screen
